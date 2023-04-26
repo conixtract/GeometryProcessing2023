@@ -36,6 +36,46 @@ bool task::is_delaunay(polymesh::edge_handle edge, pm::vertex_attribute<tg::pos2
     // -> circum-circle test of the four points (a,b,c,d) OR check if the projected paraboloid is convex
     //--- start strip ---
 
+    //lamda for calculating the minor of a matrix
+    auto minorOfMatrix = [](tg::mat4 matrix, int row, int col){
+        tg::mat3 minor;
+        int subi = 0, subj = 0;
+        for (int i = 0; i < 4; i++) {
+            if (i == row-1)
+                continue;
+            subj = 0;
+            for (int j = 0; j < 4; j++) {
+                if (j == col-1)
+                    continue;
+                minor[subi][subj] = matrix[i][j];
+                subj++;
+            }
+            subi++;
+        }
+        return tg::determinant(minor);
+    };
+
+    //center of circle
+    tg::pos2 x = {0, 0};
+
+    //setup circle representation matrix
+    //source: https://math.stackexchange.com/questions/213658/get-the-equation-of-a-circle-when-given-3-points
+    tg::mat<4, 4, float> circle_matrix;
+
+    circle_matrix[0] = {x[0]*x[0] + x[1]*x[1], x[0], x[1], 1};
+    circle_matrix[1] = {d[0]*d[0] + d[1]*d[1], d[0], d[1], 1};
+    circle_matrix[2] = {b[0]*b[0] + b[1]*b[1], b[0], b[1], 1};
+    circle_matrix[3] = {c[0]*c[0] + c[1]*c[1], c[0], c[1], 1};
+
+    x[0] = 0.5f * (minorOfMatrix(circle_matrix, 1, 2)/minorOfMatrix(circle_matrix, 1, 1));
+    x[1] = -0.5f * (minorOfMatrix(circle_matrix, 1, 3)/minorOfMatrix(circle_matrix, 1, 1));
+    
+    auto radius = tg::norm(x - d, 2.f);
+
+    //check empty circumcircle condition
+    auto d_distance_to_center = tg::norm(x - a,2.f);
+
+    if (d_distance_to_center < radius){ result = false; }
 
     //--- end strip ---
 
@@ -69,6 +109,17 @@ polymesh::vertex_index task::insert_vertex(polymesh::Mesh& mesh, pm::vertex_attr
     //   You can use an std::queue as a container for edges
     //--- start strip ---
 
+    for(auto halfedge_handle : v.outgoing_halfedges()){
+        const polymesh::edge_handle opposite_edge = halfedge_handle.next().edge();
+        if (is_delaunay(opposite_edge, position) || opposite_edge.is_boundary()){ continue; }
+        mesh.edges().flip(opposite_edge);
+    }
+
+    /*for(auto halfedge_handle : v.outgoing_halfedges()){
+        const polymesh::edge_handle opposite_edge = halfedge_handle.next().edge();
+        if (!opposite_edge.is_boundary()){ 
+            is_delaunay(opposite_edge, position); }
+    }*/
 
     //--- end strip ---
 
