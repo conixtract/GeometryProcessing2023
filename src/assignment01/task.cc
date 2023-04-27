@@ -108,18 +108,33 @@ polymesh::vertex_index task::insert_vertex(polymesh::Mesh& mesh, pm::vertex_attr
     //   You can check if an edge e is boundary by calling e.is_boundary()
     //   You can use an std::queue as a container for edges
     //--- start strip ---
+    
+    std::queue<polymesh::edge_handle> edges_to_flip;
 
+    //go over outgoing half edges and check if delaunay
     for(auto halfedge_handle : v.outgoing_halfedges()){
-        const polymesh::edge_handle opposite_edge = halfedge_handle.next().edge();
+        const auto opposite_edge = halfedge_handle.next().edge();
+
         if (is_delaunay(opposite_edge, position) || opposite_edge.is_boundary()){ continue; }
-        mesh.edges().flip(opposite_edge);
+        edges_to_flip.push(opposite_edge);
     }
 
-    /*for(auto halfedge_handle : v.outgoing_halfedges()){
-        const polymesh::edge_handle opposite_edge = halfedge_handle.next().edge();
-        if (!opposite_edge.is_boundary()){ 
-            is_delaunay(opposite_edge, position); }
-    }*/
+    while(!edges_to_flip.empty()){
+        auto current_edge = edges_to_flip.front();
+        edges_to_flip.pop();
+        mesh.edges().flip(current_edge);
+
+        //check edges of face A
+        for(auto edge_handle : current_edge.faceA().edges()){
+            if (is_delaunay(edge_handle, position) || edge_handle.is_boundary()){ continue; }
+            edges_to_flip.push(edge_handle);
+        }
+        //check edges of face B
+        for(auto edge_handle : current_edge.faceB().edges()){
+            if (is_delaunay(edge_handle, position) || edge_handle.is_boundary()){ continue; }
+            edges_to_flip.push(edge_handle);
+        }
+    }
 
     //--- end strip ---
 
