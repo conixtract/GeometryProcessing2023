@@ -73,9 +73,9 @@ bool task::is_delaunay(polymesh::edge_handle edge, pm::vertex_attribute<tg::pos2
     auto radius = tg::norm(x - d, 2.f);
 
     //check empty circumcircle condition
-    auto d_distance_to_center = tg::norm(x - a,2.f);
+    auto a_distance_to_center = tg::norm(x - a,2.f);
 
-    if (d_distance_to_center < radius){ result = false; }
+    if (a_distance_to_center < radius){ result = false; }
 
     //--- end strip ---
 
@@ -109,31 +109,34 @@ polymesh::vertex_index task::insert_vertex(polymesh::Mesh& mesh, pm::vertex_attr
     //   You can use an std::queue as a container for edges
     //--- start strip ---
     
+    //lambda for checking edges of a given face
+    auto checkEdgesOfFace = [](polymesh::face_handle const face, std::queue<polymesh::edge_handle>& edge_queue, pm::vertex_attribute<tg::pos2> const& position){
+        for(auto edge_handle : face.edges()){
+            if (is_delaunay(edge_handle, position) || edge_handle.is_boundary()){ continue; }
+            edge_queue.push(edge_handle);
+        }
+    };
+
     std::queue<polymesh::edge_handle> edges_to_flip;
 
-    //go over outgoing half edges and check if delaunay
+    //find opposite edges and check if delaunay
     for(auto halfedge_handle : v.outgoing_halfedges()){
-        const auto opposite_edge = halfedge_handle.next().edge();
+        auto const opposite_edge = halfedge_handle.next().edge();
 
         if (is_delaunay(opposite_edge, position) || opposite_edge.is_boundary()){ continue; }
         edges_to_flip.push(opposite_edge);
     }
 
+    //propagate to other edges
     while(!edges_to_flip.empty()){
         auto current_edge = edges_to_flip.front();
         edges_to_flip.pop();
         mesh.edges().flip(current_edge);
 
         //check edges of face A
-        for(auto edge_handle : current_edge.faceA().edges()){
-            if (is_delaunay(edge_handle, position) || edge_handle.is_boundary()){ continue; }
-            edges_to_flip.push(edge_handle);
-        }
+        checkEdgesOfFace(current_edge.faceA(), edges_to_flip, position);
         //check edges of face B
-        for(auto edge_handle : current_edge.faceB().edges()){
-            if (is_delaunay(edge_handle, position) || edge_handle.is_boundary()){ continue; }
-            edges_to_flip.push(edge_handle);
-        }
+        checkEdgesOfFace(current_edge.faceB(), edges_to_flip, position);
     }
 
     //--- end strip ---
