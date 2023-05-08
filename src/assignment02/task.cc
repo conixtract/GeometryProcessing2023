@@ -29,7 +29,6 @@ tg::dir3 task::compute_normal(std::vector<pm::vertex_handle> const& vs, pm::vert
      */
     // ----- %< -------------------------------------------------------
 
-
     //find center of gravity
     tg::pos3 cog(0, 0, 0);
     for(auto vertex : vs){
@@ -38,9 +37,6 @@ tg::dir3 task::compute_normal(std::vector<pm::vertex_handle> const& vs, pm::vert
     cog = cog/vs.size();
 
     auto positions_on_cog = position;
-
-    LOG(vs.size())
-    LOG(position.size())
 
     //move vertices by cog
     for(auto vertex : vs){
@@ -104,6 +100,8 @@ float task::compute_mst_weight(pm::vertex_handle v0, pm::vertex_handle v1, pm::v
      */
     // ----- %< -------------------------------------------------------
 
+    //calculate weights by a sum of the angle between normals and the distance of vertices (alpha = 1)
+    weight = (1 - abs(tg::dot(normal[v0], normal[v1]))) + norm(position[v0] - position[v1], 1.f);
 
     // ----- %< -------------------------------------------------------
     /*
