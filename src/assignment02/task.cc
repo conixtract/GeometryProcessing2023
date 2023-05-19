@@ -68,10 +68,8 @@ tg::dir3 task::compute_normal(std::vector<pm::vertex_handle> const& vs, pm::vert
 
     auto eigenbasis = tg::eigen_decomposition_symmetric(inertia_tensor);
 
-    //find eigenvector of smallest eigenvalue set result
-    if (eigenbasis[0].eigenvalue < eigenbasis[1].eigenvalue){
-        normal = tg::dir3(eigenbasis[0].eigenvector);
-    }else{ normal = tg::dir3(eigenbasis[1].eigenvector);}
+    //line 301 in eigenvalues.cc states that the eigenvalues are sorted
+    normal = tg::dir3(eigenbasis[0].eigenvector);
 
     // ----- %< -------------------------------------------------------
     /*
@@ -101,7 +99,7 @@ float task::compute_mst_weight(pm::vertex_handle v0, pm::vertex_handle v1, pm::v
     // ----- %< -------------------------------------------------------
 
     //calculate weights by a sum of the angle between normals and the distance of vertices (alpha = 1)
-    weight = (1 - abs(tg::dot(normal[v0], normal[v1]))) + norm(position[v0] - position[v1], 1.f);
+    weight = (1 - abs(tg::dot(normal[v0], normal[v1]))) + tg::length(position[v0] - position[v1]);
 
     // ----- %< -------------------------------------------------------
     /*
