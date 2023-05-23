@@ -1,0 +1,19 @@
+{
+	"folders":
+	[
+		{
+			"path": "/home/pk/dev/Geometry-Processing",
+		}
+	],
+	"debugger_configurations":
+	[
+		{
+			"type": "gdb",
+			"request": "launch",
+			"name": "Launch Program",
+			"target": "./RelWithDebInfo/Assignment03",
+			"cwd": "${folder}/bin",
+			"valuesFormatting": "parseText"
+		},
+	],
+}

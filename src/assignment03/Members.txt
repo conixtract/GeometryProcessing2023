@@ -1,0 +1,7 @@
+# Enumerate all team members in this file, one per line, using
+# the format <matriculation number> <name>.
+# Empty lines and lines starting with a hash symbol '#' are ignored.
+# Below is an example entry. Delete it before adding your own entries!
+
+123456 John Doe
+
