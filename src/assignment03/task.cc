@@ -43,7 +43,7 @@ pm::edge_attribute<float> compute_weights(pm::Mesh& mesh, pm::vertex_attribute<t
             auto vec_D_A = tg::normalize(position(A)-position(D));
             auto vec_D_B = tg::normalize(position(B)-position(D));
 
-            float alpha = acos(tg::dot(vec_D_A, vec_D_B));
+            float alpha = acos(tg::dot(vec_C_A, vec_C_B));
             float beta = acos(tg::dot(vec_D_B, vec_D_A));
 
             weights(eh) = 0.5f * (1.f/tan(alpha) + 1.f/tan(beta));
@@ -82,14 +82,17 @@ void compute_new_positions(pm::Mesh& mesh,
                 //--- start strip ---
 
                 auto laplace = tg::vec3::zero;
+                auto sum_weights = 0.f;
                 for (auto halfedge : vh.outgoing_halfedges()){
                     auto const w = edge_weight(halfedge.edge());
-                    auto const pj = position(halfedge.vertex_to());
-                    auto const pi = position(vh);
+                    auto const pj = halfedge.vertex_to();
+                    auto const pi = vh;
 
-                    laplace += w*(pj - pi);
+                    laplace += w * (position(pj) - position(pi));
+                    sum_weights += w;
                 }
-                laplace /= vh.outgoing_halfedges().size();
+                //laplace /= vh.outgoing_halfedges().size();
+                laplace /= sum_weights;
 
                 new_position(vh) = position(vh) + 0.5f * laplace;
 
@@ -104,6 +107,69 @@ void compute_new_positions(pm::Mesh& mesh,
             // 2nd: compute Laplaces of Laplacian vectors of all one-ring neighbors
             // 3rd: store updated positions in new_position (use damping factor 0.25 for stability)
             //--- start strip ---
+
+            //looks right but I don't completly understand why
+            //compute laplacian positions
+            auto laplacian_pos = mesh.vertices().make_attribute<tg::pos3>();
+            for (auto vertex : mesh.vertices()){
+                auto laplacian = tg::vec3::zero;
+                auto sum_weights = 0.f;
+                for (auto halfedge : vertex.outgoing_halfedges()){
+                    auto const w = edge_weight(halfedge.edge());
+                    auto const pj = halfedge.vertex_to();
+                    auto const pi = vertex;
+
+                    laplacian += w * (position(pj) - position(pi));
+                    sum_weights += w;
+                }
+                laplacian /= sum_weights;
+                laplacian_pos(vertex) = position(vertex) + 0.25f * laplacian;
+            }
+
+            //compute bilaplacian
+            for (auto vertex : mesh.vertices()){
+                auto bilaplacian = tg::vec3::zero;
+                auto sum_weights = 0.f;
+                for (auto halfedge : vertex.outgoing_halfedges()){
+                    auto const w = edge_weight(halfedge.edge());
+                    bilaplacian += w * (laplacian_pos(halfedge.vertex_to()) - position(vertex));
+                    sum_weights += w;
+                }
+                bilaplacian /= sum_weights;
+
+                new_position(vertex) = position(vertex) + 0.25f * bilaplacian;
+            }
+
+            //this makes more sense to me mathmatically but looks terrible and is obviously wrong
+            /*//compute laplacian
+            auto laplacian = mesh.vertices().make_attribute<tg::vec3>();
+            for (auto vertex : mesh.vertices()){
+                laplacian(vertex) = tg::vec3::zero;
+                auto sum_weights = 0.f;
+                for (auto halfedge : vertex.outgoing_halfedges()){
+                    auto const w = edge_weight(halfedge.edge());
+                    auto const pj = halfedge.vertex_to();
+                    auto const pi = vertex;
+
+                    laplacian(vertex) += w * (position(pj) - position(pi));
+                    sum_weights += w;
+                }
+                laplacian(vertex) /= sum_weights;
+            }
+
+            //compute bilaplacian
+            for (auto vertex : mesh.vertices()){
+                auto bilaplacian = tg::vec3::zero;
+                auto sum_weights = 0.f;
+                for (auto halfedge : vertex.outgoing_halfedges()){
+                    auto const w = edge_weight(halfedge.edge());
+                    bilaplacian += w * laplacian(halfedge.vertex_to());
+                    sum_weights += w;
+                }
+                bilaplacian /= sum_weights;
+
+                new_position(vertex) = position(vertex) + 0.25f * bilaplacian;
+            }*/
 
             //--- end strip ---
         }
