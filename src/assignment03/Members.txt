@@ -3,5 +3,6 @@
 # Empty lines and lines starting with a hash symbol '#' are ignored.
 # Below is an example entry. Delete it before adding your own entries!
 
-123456 John Doe
-
+422186 Paul Kern
+406310 Laura Koch
+429819 Xiang Xu
