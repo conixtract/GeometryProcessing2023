@@ -6,6 +6,8 @@
 
 #include <queue>
 
+#include <iostream>
+
 namespace task
 {
 bool is_collapse_legal(pm::vertex_attribute<tg::pos3>& position, pm::face_attribute<tg::vec3> const& normal, pm::halfedge_handle heh, tg::angle32 max_angle)
@@ -61,19 +63,12 @@ bool is_collapse_legal(pm::vertex_attribute<tg::pos3>& position, pm::face_attrib
 
     // ----- %< -------------------------------------------------------
 
-    position(v0) = position(v1);
-
-    std::queue<pm::face_handle> faces_to_check;
+    position(v0) = p1;
 
     for (auto face : v0.faces()){
-        if(face != fl && face != fr){ faces_to_check.push(face); }
-    }
+        if(face == fl || face == fr){ continue; }
 
-    for (int i = 0; i < faces_to_check.size(); ++i){
-        auto face = faces_to_check.front();
-        faces_to_check.pop();
-
-        auto angle_diviation = acos(tg::dot(pm::triangle_normal(face, position), normal(face)));
+        auto const angle_diviation = acos(tg::dot(pm::triangle_normal(face, position), normal(face)));
         if(angle_diviation > max_angle.degree()){ collapseOK = false; }
     }
 
@@ -129,15 +124,10 @@ void initialize_quadrics(pm::Mesh const& mesh, pm::vertex_attribute<tg::pos3> co
         // ----- %< -------------------------------------------------------
 
         for (auto face : vh.faces()){
-            auto plane_offset = tg::dot(normals(face), position(vh));
-            auto distance_to_plane = tg::dot(normals(face), position(vh)) + plane_offset;
-
             auto const n = normals(face);
-            auto const d = distance_to_plane;
-            Quadric face_quadric = QuadricT(n.x*n.x, n.x*n.y, n.x*n.z, n.x*d,
-                                                     n.y*n.y, n.y*n.z, n.y*d,
-                                                              n.z*n.z, n.z*d,
-                                                                       d*d);
+            auto const d = tg::dot(-normals(face), position(vh));
+
+            Quadric const face_quadric = QuadricT(n.x, n.y, n.z, d);
             quadrics(vh) += face_quadric;
         }
 
@@ -238,6 +228,21 @@ void decimate(pm::Mesh& mesh, pm::vertex_attribute<tg::pos3>& position, int num_
 
         // ----- %< -------------------------------------------------------
 
+        //collapse v0 into v1
+        auto edge_to_collapse = collapse_halfedge(vh);
+        if (!is_collapse_legal(position, normals, edge_to_collapse, max_angle)){ continue; }
+
+        auto const v0 = edge_to_collapse.vertex_from();
+        auto const v1 = edge_to_collapse.vertex_to();
+
+        quadrics(v1) += quadrics(v0);
+
+        mesh.halfedges().collapse(edge_to_collapse);
+        enqueue_vertex(v1);
+        for (auto vertex : v1.adjacent_vertices()){
+            enqueue_vertex(vertex);
+        }
+        current_num_vertices = mesh.vertices().count();
 
         // ----- %< -------------------------------------------------------
     }
